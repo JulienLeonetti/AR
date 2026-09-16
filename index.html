@@ -1,113 +1,50 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#f6f4ef">
-    <meta name="description" content="Explorez une collection d’objets 3D et composez votre espace en réalité augmentée.">
-    <title>FORME — Votre espace, autrement.</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23b95136'/%3E%3Cpath d='m24 10 13 7v14l-13 7-13-7V17Zm0 14 13-7m-13 7-13-7m13 7v14' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="main.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<title>TP</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link type="text/css" rel="stylesheet" href="main.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 <body>
-    <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs>
-            <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
-            <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
-            <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-            <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
-            <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
-            <symbol id="i-scan" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 12h8m-4-4v8"/></symbol>
-            <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .5-1.5 1-1.5 2M12 16h.01"/></symbol>
-            <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
-            <symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6m0-6-7 7M10 20H4v-6m0 6 7-7"/></symbol>
-            <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
-            <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
-            <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
-        </defs>
-    </svg>
-    <div id="viewport" aria-label="Aperçu interactif du modèle 3D"></div>
-    <div id="content">
-        <header class="topbar" data-ui>
-            <a class="brand" href="./" aria-label="FORME, accueil"><span class="brand-mark"><svg class="icon"><use href="#i-cube"/></svg></span><span>forme<span class="brand-dot">.</span></span></a>
-            <div class="breadcrumb">L’atelier <span>/</span><strong>Votre espace, autrement.</strong></div>
-            <div class="header-actions">
-                <span class="mode-badge"><span class="status-dot"></span><span id="modeLabel">Studio 3D</span></span>
-                <button class="icon-button" id="helpButton" type="button" aria-label="Comment utiliser le studio" title="Comment ça marche ?"><svg class="icon"><use href="#i-help"/></svg></button>
-                <button class="icon-button exit-ar" id="exitARButton" type="button" aria-label="Quitter la réalité augmentée"><svg class="icon"><use href="#i-close"/></svg></button>
-            </div>
-        </header>
-        <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="Fermer la collection" hidden data-ui></button>
-        <aside id="mySidenav" class="collection-panel" aria-label="Collection d’objets" data-ui>
-            <div class="collection-heading">
-                <div><span class="eyebrow">À VOUS DE COMPOSER</span><h1>La collection<span class="count-tag">04</span></h1></div>
-                <button class="icon-button close-collection" id="closeCollection" type="button" aria-label="Fermer la collection"><svg class="icon"><use href="#i-close"/></svg></button>
-            </div>
-            <p class="collection-intro">Une pièce. Une nouvelle perspective.<br>Choisissez votre point de départ.</p>
-            <div class="collection-label"><span>LES OBJETS</span><span>01 — 04</span></div>
-            <div class="object-list">
-                <button class="ar-object is-active" id="1" data-name="Fauteuil lounge" type="button" aria-pressed="true">
-                    <span class="object-image image-lilac"><img src="assets/model-1.png" alt="" draggable="false"><span class="object-number">01</span><span class="object-check"><svg class="icon"><use href="#i-check"/></svg></span></span>
-                    <span class="object-info"><span><strong>Fauteuil lounge</strong><small>Une invitation à ralentir</small></span><svg class="icon"><use href="#i-arrow"/></svg></span>
-                </button>
-                <button class="ar-object" id="2" data-name="Fauteuil Pop" type="button" aria-pressed="false">
-                    <span class="object-image image-sand"><img src="assets/model-2.png" alt="" draggable="false"><span class="object-number">02</span><span class="object-check"><svg class="icon"><use href="#i-check"/></svg></span></span>
-                    <span class="object-info"><span><strong>Fauteuil Pop</strong><small>Une touche de soleil</small></span><svg class="icon"><use href="#i-arrow"/></svg></span>
-                </button>
-                <button class="ar-object" id="3" data-name="Canapé vermillon" type="button" aria-pressed="false">
-                    <span class="object-image image-sage"><img src="assets/model-3.png" alt="" draggable="false"><span class="object-number">03</span><span class="object-check"><svg class="icon"><use href="#i-check"/></svg></span></span>
-                    <span class="object-info"><span><strong>Canapé vermillon</strong><small>Du caractère, tout simplement</small></span><svg class="icon"><use href="#i-arrow"/></svg></span>
-                </button>
-                <button class="ar-object" id="4" data-name="Chaise Ligne" type="button" aria-pressed="false">
-                    <span class="object-image image-clay"><img src="assets/model-4.png" alt="" draggable="false"><span class="object-number">04</span><span class="object-check"><svg class="icon"><use href="#i-check"/></svg></span></span>
-                    <span class="object-info"><span><strong>Chaise Ligne</strong><small>L’essentiel, en finesse</small></span><svg class="icon"><use href="#i-arrow"/></svg></span>
-                </button>
-            </div>
-            <div class="collection-footer"><span class="tiny-cross">✳</span><p>Imaginez ici.<br><strong>Essayez chez vous.</strong></p><span class="footer-edition">COLLECTION<br>VOLUME 01</span></div>
-        </aside>
-        <main class="studio">
-            <div class="studio-heading"><div><span class="eyebrow">LE CHAMP DES POSSIBLES</span><h2>Faites de la place<br>à vos <em>idées.</em></h2></div><span class="preview-badge"><svg class="icon"><use href="#i-cube"/></svg>Aperçu 3D</span></div>
-            <div class="stage-decoration" aria-hidden="true"><span class="stage-orbit"></span><span class="stage-axis axis-x"></span><span class="stage-axis axis-y"></span><span class="stage-point"></span></div>
-            <span class="stage-caption">UNE AUTRE DIMENSION À VOTRE INTÉRIEUR</span>
-            <div class="preview-controls" data-ui><button class="icon-button" id="resetViewButton" type="button" title="Recentrer la vue" aria-label="Recentrer la vue"><svg class="icon"><use href="#i-rotate"/></svg></button><span>Recentrer</span></div>
-            <div class="preview-hint"><svg class="icon"><use href="#i-rotate"/></svg><span>Glissez pour explorer <span class="hint-separator">·</span> Pincez ou scrollez pour zoomer</span></div>
-            <div class="ar-status" id="arStatus" role="status"><span class="status-dot"></span><span id="arStatusText">Déplacez doucement votre téléphone</span></div>
-            <div class="selection-tools" id="selectionTools" data-ui hidden>
-                <div class="selection-title"><span class="status-dot"></span>Objet sélectionné<button class="icon-button" id="deselectButton" type="button" aria-label="Terminer la modification"><svg class="icon"><use href="#i-check"/></svg></button></div>
-                <div class="scale-controls"><span>Taille</span><button class="icon-button" id="shrinkButton" type="button" aria-label="Réduire l’objet"><svg class="icon"><use href="#i-minus"/></svg></button><output id="scaleValue">100 %</output><button class="icon-button" id="growButton" type="button" aria-label="Agrandir l’objet"><svg class="icon"><use href="#i-plus"/></svg></button></div>
-                <p>Glissez pour tourner · Pincez pour ajuster</p>
-            </div>
-            <div class="bottom-area">
-                <div class="object-summary"><div><span class="eyebrow" id="objectMeta">PIÈCE 01 / 04</span><h3 id="objectName">Fauteuil lounge</h3></div><span class="object-state" id="modelState"><span class="status-dot"></span><span id="modelStateText">Chargement…</span></span></div>
-                <div class="experience-bar" data-ui>
-                    <button id="menuButton" class="collection-trigger" type="button" aria-controls="mySidenav" aria-expanded="false"><svg class="icon"><use href="#i-grid"/></svg><span>Collection</span></button>
-                    <div class="experience-copy"><span class="experience-icon"><svg class="icon"><use href="#i-scan"/></svg></span><div><strong>Et si vous l’essayiez chez vous ?</strong><p id="arAvailability">Découvrez-le dans votre espace, en réalité augmentée.</p></div></div>
-                    <div id="arEntry" class="ar-entry" aria-label="Démarrer la réalité augmentée"></div>
-                    <div id="actionButtons">
-                        <span class="placed-count" id="placedCount">0 objet</span>
-                        <button id="clearButton" class="icon-button clear-button" type="button" aria-label="Effacer tous les objets" title="Tout effacer"><svg class="icon"><use href="#i-trash"/></svg></button>
-                        <button id="placeButton" class="primary-button" type="button"><svg class="icon"><use href="#i-plus"/></svg><span id="placeLabel">PLACE</span><svg class="icon"><use href="#i-arrow"/></svg></button>
-                    </div>
-                </div>
-                <div class="studio-footer"><span>UN PEU D’IMAGINATION. UNE NOUVELLE DIMENSION.</span><span>CONÇU POUR EXPLORER <span class="footer-star">✳</span></span></div>
-            </div>
-        </main>
-        <div id="rotationSurface"></div>
-        <div class="toast" id="toast" role="status" hidden></div>
-        <div class="help-layer" id="helpLayer" hidden data-ui>
-            <button class="help-backdrop" id="helpBackdrop" type="button" aria-label="Fermer le guide"></button>
-            <section class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-                <button class="icon-button help-close" id="closeHelp" type="button" aria-label="Fermer le guide"><svg class="icon"><use href="#i-close"/></svg></button>
-                <span class="eyebrow">QUELQUES GESTES SUFFISENT</span><h2 id="helpTitle">À vous de <em>jouer.</em></h2>
-                <div class="help-step"><span>01</span><div><strong>Choisissez votre pièce</strong><p>Parcourez la collection. Glissez sur l’aperçu pour l’explorer sous tous les angles.</p></div></div>
-                <div class="help-step"><span>02</span><div><strong>Invitez-la chez vous</strong><p>Sur un téléphone compatible, lancez l’AR. Visez le sol jusqu’à détecter une surface, puis appuyez sur PLACE.</p></div></div>
-                <div class="help-step"><span>03</span><div><strong>Trouvez le bon équilibre</strong><p>Touchez un objet pour le sélectionner. Glissez pour le tourner, pincez pour changer sa taille. Visez une autre surface et appuyez sur DÉPLACER.</p></div></div>
-                <button class="primary-button" id="understoodButton" type="button">C’est parti<svg class="icon"><use href="#i-arrow"/></svg></button>
-            </section>
-        </div>
-    </div>
-    <script type="importmap">{"imports":{"three":"./build/three.module.js","three/addons/":"./jsm/"}}</script>
-    <script type="module" src="./main.js"></script>
+
+<div id="content">
+<div id="mySidenav" class="sidenav">
+<a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+<a class="ar-object" id="1" href="#">item_1</a>
+<a class="ar-object" id="2" href="#">item_2</a>
+<a class="ar-object" id="3" href="#">item_3</a>
+<a class="ar-object" id="4" href="#">item_4</a>
+</div>
+<div id="menuButton" onclick="openNav()">&#9776;</div>
+<div id="rotationSurface"></div>
+<div id="actionButtons">
+<button id="placeButton" type="button">PLACE</button>
+<button id="clearButton" type="button">CLEAR</button>
+</div>
+</div>
+
+<script type="importmap">
+{
+"imports":{
+"three":"./build/three.module.js",
+"three/addons/":"./jsm/"
+}
+}
+</script>
+
+<script type="module" src="./main.js"></script>
+
+<script>
+function openNav(){
+document.getElementById("mySidenav").style.width="250px";
+}
+
+function closeNav(){
+document.getElementById("mySidenav").style.width="0";
+}
+</script>
+
 </body>
 </html>
