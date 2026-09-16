@@ -3,6 +3,7 @@ import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { GLTFLoader } from 'three/addons/webxr/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/webxr/OrbitControls.js';
 import { RGBELoader } from 'three/addons/webxr/RGBELoader.js';
+import { setupInterface, updateInterface, decorateARButton, closeCollection, notify } from './interface.js';
 
 let scene;
 let camera;
@@ -16,6 +17,11 @@ let environmentRenderTarget;
 let actionButtons;
 let placeButton;
 let rotationSurface;
+let arActive = false;
+let modelLoading = false;
+let modelFailed = false;
+let loadVersion = 0;
+const viewport = document.getElementById('viewport');
 
 let touchDown = false;
 let touchX = 0;
@@ -47,8 +53,8 @@ function init() {
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(
-        70,
-        window.innerWidth / window.innerHeight,
+        45,
+        viewport.clientWidth / viewport.clientHeight,
         0.01,
         20
     );
@@ -77,13 +83,14 @@ function init() {
     );
 
     renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
+        viewport.clientWidth,
+        viewport.clientHeight
     );
 
     renderer.xr.enabled = true;
 
-    document.body.appendChild(
+    viewport.appendChild(document.querySelector('.stage-decoration'));
+    viewport.appendChild(
         renderer.domElement
     );
 
@@ -125,21 +132,37 @@ function init() {
     controls.target.set(
         0,
         0,
-        -0.2
+        -2
     );
 
-    controls.minDistance = 2;
-    controls.maxDistance = 10;
+    controls.minDistance = 0.6;
+    controls.maxDistance = 6;
+    controls.enablePan = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    controls.update();
+    resetPreviewView();
+
+    setupInterface({
+        scale: scaleObject,
+        resetView: resetPreviewView,
+        deselect: function () {
+            clearSelectionHelper();
+            loadModel(selected_model);
+        },
+        exitAR: function () {
+            renderer.xr.getSession()?.end().catch(function (error) {
+                console.error(error);
+                notify('Impossible de quitter l’AR. Réessayez.');
+            });
+        }
+    });
 
     document.addEventListener(
         'touchstart',
         function (event) {
 
-            if (isInterfaceElement(event.target)) {
+            if (!arActive || isInterfaceElement(event.target)) {
                 touchDown = false;
                 return;
             }
@@ -308,7 +331,7 @@ function init() {
         }
     };
 
-    document.body.appendChild(
+    decorateARButton(
         ARButton.createButton(
             renderer,
             options
@@ -350,6 +373,10 @@ function init() {
         'sessionstart',
         function () {
 
+            arActive = true;
+            closeCollection();
+            syncInterface();
+
             hitTestSource = null;
             hitTestSourceRequested = false;
 
@@ -388,6 +415,13 @@ function init() {
         'sessionend',
         function () {
 
+            arActive = false;
+            closeCollection();
+            document.body.classList.remove('is-ar');
+            touchDown = false;
+            lastTouchAngle = null;
+            lastTouchDistance = null;
+
             hitTestSource = null;
             hitTestSourceRequested = false;
 
@@ -415,6 +449,12 @@ function init() {
 
                 current_object.visible = true;
             }
+
+            syncInterface();
+            requestAnimationFrame(function () {
+                onWindowResize();
+                resetPreviewView();
+            });
         }
     );
 
@@ -441,6 +481,9 @@ function init() {
 
 function loadModel(model) {
 
+    const version = ++loadVersion;
+    modelLoading = true;
+    modelFailed = false;
     loading_model = model;
 
     selected_model = model;
@@ -455,7 +498,7 @@ function loadModel(model) {
 
             // Si un autre modèle a été sélectionné
             // pendant le chargement, on ignore celui-ci
-            if (loading_model !== model) {
+            if (loading_model !== model || version !== loadVersion) {
                 return;
             }
 
@@ -540,6 +583,8 @@ function loadModel(model) {
 
 
             current_object.visible = true;
+            modelLoading = false;
+            loading_model = null;
 
 
             // Pendant l'AR, il sera affiché
@@ -548,11 +593,20 @@ function loadModel(model) {
 
                 current_object.visible = false;
             }
+            if (!arActive) resetPreviewView();
+            syncInterface();
         },
 
         undefined,
 
         function (error) {
+
+            if (version !== loadVersion) return;
+            modelLoading = false;
+            modelFailed = true;
+            loading_model = null;
+            notify('Cet objet n’a pas pu être chargé. Sélectionnez-le pour réessayer.');
+            syncInterface();
 
             console.error(
                 'Erreur lors du chargement de ' +
@@ -586,7 +640,7 @@ $('.ar-object').click(function (event) {
 
 
     // Ferme le menu
-    closeNav();
+    closeCollection();
 });
 
 
@@ -616,7 +670,11 @@ document.getElementById('clearButton').addEventListener(
         placed_objects = [];
         current_object = null;
         loading_model = null;
+        loadVersion++;
+        modelLoading = false;
         clearSelectionHelper();
+        notify('Votre espace est vide. À vous de recommencer.');
+        loadModel(selected_model);
     }
 );
 
@@ -628,7 +686,7 @@ document.getElementById('clearButton').addEventListener(
 function onSelect() {
 
     // Aucun modèle à placer
-    if (!current_object) {
+    if (!current_object || modelLoading || !arActive) {
         return;
     }
 
@@ -648,6 +706,7 @@ function onSelect() {
     );
 
     current_object.visible = true;
+    notify(objectWasAlreadyPlaced ? 'Objet déplacé.' : 'Objet placé. Vous pouvez en ajouter un autre.');
 
 
     if (!objectWasAlreadyPlaced) {
@@ -671,6 +730,9 @@ function onSelect() {
 // -------------------------------------------------
 
 function onObjectSelect() {
+
+    if (!arActive || document.body.classList.contains('collection-open') ||
+        !document.getElementById('helpLayer').hidden) return;
 
     controllerRotation
         .identity()
@@ -715,11 +777,14 @@ function onObjectSelect() {
     }
 
     loading_model = null;
+    loadVersion++;
+    modelLoading = false;
     current_object = selectedObject;
     selected_model =
         current_object.userData.modelId || selected_model;
 
     showSelectionHelper(current_object);
+    syncInterface();
 }
 
 
@@ -738,6 +803,10 @@ function showSelectionHelper(object) {
 
 
 function clearSelectionHelper() {
+
+    touchDown = false;
+    lastTouchAngle = null;
+    lastTouchDistance = null;
 
     if (rotationSurface) {
         rotationSurface.style.display = 'none';
@@ -811,6 +880,7 @@ function scaleObject(scaleFactor) {
 
     current_object.scale.setScalar(newScale);
     selectionHelper.update();
+    syncInterface();
 }
 
 
@@ -819,7 +889,7 @@ function isInterfaceElement(target) {
     return (
         target instanceof Element &&
         target.closest(
-            '#actionButtons, #menuButton, #mySidenav, #ARButton'
+            '[data-ui], #ARButton'
         ) !== null
     );
 }
@@ -865,6 +935,8 @@ function animate(
     timestamp,
     frame
 ) {
+
+    syncInterface();
 
     // Pas de session AR
     if (!frame) {
@@ -965,7 +1037,7 @@ function animate(
 
                 reticle.visible = true;
                 placeButton.style.display =
-                    current_object ? 'block' : 'none';
+                    current_object && !modelLoading ? 'inline-flex' : 'none';
 
                 reticle.matrix.fromArray(
                     pose.transform.matrix
@@ -1002,8 +1074,8 @@ function animate(
 function onWindowResize() {
 
     camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
+        viewport.clientWidth /
+        viewport.clientHeight;
 
     camera.updateProjectionMatrix();
 
@@ -1011,8 +1083,35 @@ function onWindowResize() {
     if (!renderer.xr.isPresenting) {
 
         renderer.setSize(
-            window.innerWidth,
-            window.innerHeight
+            viewport.clientWidth,
+            viewport.clientHeight
         );
     }
+}
+
+
+function resetPreviewView() {
+    if (arActive) return;
+    const target = current_object ? current_object.position : new THREE.Vector3(0, 0, -2);
+    controls.target.copy(target);
+    // Une vue trois-quarts, cadrée dans l’espace disponible de l’interface.
+    const distance = 1.05;
+    camera.position.copy(target).add(new THREE.Vector3(0.48, 0.24, 1).normalize().multiplyScalar(distance));
+    controls.update();
+}
+
+
+function syncInterface() {
+    updateInterface({
+        model: selected_model,
+        ar: arActive,
+        selected: Boolean(selectionHelper),
+        count: placed_objects.length,
+        scale: current_object ? Math.round(100 * current_object.scale.x /
+            (current_object.userData.initialScale || current_object.scale.x)) : 100,
+        surface: Boolean(reticle?.visible),
+        loading: modelLoading,
+        failed: modelFailed,
+        hasObject: Boolean(current_object)
+    });
 }
