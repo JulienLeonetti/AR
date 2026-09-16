@@ -23,6 +23,7 @@ let touchY = 0;
 let deltaX = 0;
 let deltaY = 0;
 let lastTouchAngle = null;
+let lastTouchDistance = null;
 
 let hitTestSource = null;
 let hitTestSourceRequested = false;
@@ -155,6 +156,7 @@ function init() {
 
             if (event.touches.length >= 2) {
                 lastTouchAngle = getTouchAngle(event.touches);
+                lastTouchDistance = getTouchDistance(event.touches);
             }
         },
         { passive: false, capture: true }
@@ -173,6 +175,7 @@ function init() {
             if (event.touches.length === 0) {
                 touchDown = false;
                 lastTouchAngle = null;
+                lastTouchDistance = null;
                 return;
             }
 
@@ -182,6 +185,11 @@ function init() {
             lastTouchAngle =
                 event.touches.length >= 2
                     ? getTouchAngle(event.touches)
+                    : null;
+
+            lastTouchDistance =
+                event.touches.length >= 2
+                    ? getTouchDistance(event.touches)
                     : null;
         },
         { passive: false, capture: true }
@@ -198,6 +206,7 @@ function init() {
             event.preventDefault();
             touchDown = false;
             lastTouchAngle = null;
+            lastTouchDistance = null;
         },
         { passive: false, capture: true }
     );
@@ -220,6 +229,9 @@ function init() {
                 const touchAngle =
                     getTouchAngle(event.touches);
 
+                const touchDistance =
+                    getTouchDistance(event.touches);
+
                 if (lastTouchAngle !== null) {
                     rotateObjectOnZ(
                         normalizeAngle(
@@ -228,11 +240,22 @@ function init() {
                     );
                 }
 
+                if (
+                    lastTouchDistance !== null &&
+                    lastTouchDistance > 0
+                ) {
+                    scaleObject(
+                        touchDistance / lastTouchDistance
+                    );
+                }
+
                 lastTouchAngle = touchAngle;
+                lastTouchDistance = touchDistance;
                 return;
             }
 
             lastTouchAngle = null;
+            lastTouchDistance = null;
 
             deltaX =
                 event.touches[0].pageX - touchX;
@@ -501,6 +524,9 @@ function loadModel(model) {
                 );
             }
 
+            current_object.userData.initialScale =
+                current_object.scale.x;
+
             scene.add(
                 current_object
             );
@@ -763,6 +789,31 @@ function rotateObjectOnZ(angle) {
 }
 
 
+function scaleObject(scaleFactor) {
+
+    if (
+        !current_object ||
+        !selectionHelper ||
+        !Number.isFinite(scaleFactor)
+    ) {
+        return;
+    }
+
+    const initialScale =
+        current_object.userData.initialScale ||
+        current_object.scale.x;
+
+    const newScale = THREE.MathUtils.clamp(
+        current_object.scale.x * scaleFactor,
+        initialScale * 0.25,
+        initialScale * 4
+    );
+
+    current_object.scale.setScalar(newScale);
+    selectionHelper.update();
+}
+
+
 function isInterfaceElement(target) {
 
     return (
@@ -779,6 +830,15 @@ function getTouchAngle(touches) {
     return Math.atan2(
         touches[1].pageY - touches[0].pageY,
         touches[1].pageX - touches[0].pageX
+    );
+}
+
+
+function getTouchDistance(touches) {
+
+    return Math.hypot(
+        touches[1].pageX - touches[0].pageX,
+        touches[1].pageY - touches[0].pageY
     );
 }
 
