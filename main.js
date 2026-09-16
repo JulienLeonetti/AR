@@ -9,6 +9,8 @@ let camera;
 let renderer;
 let reticle;
 let controls;
+let controller;
+let selectionHelper = null;
 let pmremGenerator;
 let environmentRenderTarget;
 let actionButtons;
@@ -31,6 +33,9 @@ let selected_model = '1';
 
 // Tous les modèles déjà placés
 let placed_objects = [];
+
+const raycaster = new THREE.Raycaster();
+const controllerRotation = new THREE.Matrix4();
 
 init();
 
@@ -192,6 +197,13 @@ function init() {
         }
     );
 
+    controller = renderer.xr.getController(0);
+    controller.addEventListener(
+        'select',
+        onObjectSelect
+    );
+    scene.add(controller);
+
     const options = {
 
         requiredFeatures: [
@@ -261,8 +273,11 @@ function init() {
                 );
             }
 
-            // Le modèle en attente de placement est caché
-            if (current_object) {
+            // Seul le modèle qui n'a pas encore été placé est caché.
+            if (
+                current_object &&
+                !placed_objects.includes(current_object)
+            ) {
                 current_object.visible = false;
             }
 
@@ -292,8 +307,13 @@ function init() {
                 controls.enabled = true;
             }
 
-            // Le modèle non placé revient à sa position initiale
-            if (current_object) {
+            clearSelectionHelper();
+
+            // Le modèle non placé revient à sa position initiale.
+            if (
+                current_object &&
+                !placed_objects.includes(current_object)
+            ) {
 
                 current_object.position.set(
                     0,
@@ -362,6 +382,8 @@ function loadModel(model) {
                 current_object = null;
             }
 
+            clearSelectionHelper();
+
 
             // Centre le modèle dans un groupe parent.
             // Le groupe peut être déplacé sans perdre le centrage.
@@ -396,6 +418,8 @@ function loadModel(model) {
 
             current_object =
                 new THREE.Group();
+
+            current_object.userData.modelId = model;
 
             current_object.add(
                 model_scene
@@ -497,6 +521,7 @@ document.getElementById('clearButton').addEventListener(
         placed_objects = [];
         current_object = null;
         loading_model = null;
+        clearSelectionHelper();
     }
 );
 
@@ -519,7 +544,10 @@ function onSelect() {
     }
 
 
-    // Place le modèle à l'endroit du reticle
+    const objectWasAlreadyPlaced =
+        placed_objects.includes(current_object);
+
+    // Place ou déplace le modèle à l'endroit du réticule.
     current_object.position.setFromMatrixPosition(
         reticle.matrix
     );
@@ -527,11 +555,102 @@ function onSelect() {
     current_object.visible = true;
 
 
-    // Le premier clic enregistre l'objet comme placé.
-    // Les clics suivants déplacent ce même objet.
-    if (!placed_objects.includes(current_object)) {
+    if (!objectWasAlreadyPlaced) {
         placed_objects.push(current_object);
+
+        // Prépare automatiquement une nouvelle copie du même modèle.
+        current_object = null;
+        clearSelectionHelper();
+        placeButton.style.display = 'none';
+        loadModel(selected_model);
+    } else if (selectionHelper) {
+
+        // Le même objet reste sélectionné après son déplacement.
+        selectionHelper.update();
     }
+}
+
+
+// -------------------------------------------------
+// SELECTION D'UN OBJET DEJA PLACE
+// -------------------------------------------------
+
+function onObjectSelect() {
+
+    controllerRotation
+        .identity()
+        .extractRotation(controller.matrixWorld);
+
+    raycaster.ray.origin.setFromMatrixPosition(
+        controller.matrixWorld
+    );
+
+    raycaster.ray.direction
+        .set(0, 0, -1)
+        .applyMatrix4(controllerRotation);
+
+    const intersections = raycaster.intersectObjects(
+        placed_objects,
+        true
+    );
+
+    if (intersections.length === 0) {
+        return;
+    }
+
+    let selectedObject = intersections[0].object;
+
+    while (
+        selectedObject.parent &&
+        !placed_objects.includes(selectedObject)
+    ) {
+        selectedObject = selectedObject.parent;
+    }
+
+    if (!placed_objects.includes(selectedObject)) {
+        return;
+    }
+
+    // Supprime l'éventuelle copie encore en attente de placement.
+    if (
+        current_object &&
+        !placed_objects.includes(current_object)
+    ) {
+        scene.remove(current_object);
+    }
+
+    loading_model = null;
+    current_object = selectedObject;
+    selected_model =
+        current_object.userData.modelId || selected_model;
+
+    showSelectionHelper(current_object);
+}
+
+
+function showSelectionHelper(object) {
+
+    clearSelectionHelper();
+
+    selectionHelper = new THREE.BoxHelper(
+        object,
+        0xffff00
+    );
+
+    scene.add(selectionHelper);
+}
+
+
+function clearSelectionHelper() {
+
+    if (!selectionHelper) {
+        return;
+    }
+
+    scene.remove(selectionHelper);
+    selectionHelper.geometry.dispose();
+    selectionHelper.material.dispose();
+    selectionHelper = null;
 }
 
 
@@ -547,6 +666,10 @@ function rotateObject() {
     ) {
         current_object.rotation.y +=
             deltaX / 100;
+
+        if (selectionHelper) {
+            selectionHelper.update();
+        }
     }
 }
 
@@ -658,7 +781,8 @@ function animate(
             if (pose) {
 
                 reticle.visible = true;
-                placeButton.style.display = 'block';
+                placeButton.style.display =
+                    current_object ? 'block' : 'none';
 
                 reticle.matrix.fromArray(
                     pose.transform.matrix
