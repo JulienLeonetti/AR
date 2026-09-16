@@ -169,10 +169,14 @@ canvas {
     bottom: 24px;
     left: 50%;
     z-index: 300;
-    display: flex;
+    display: none;
     gap: 10px;
     transform: translateX(-50%);
     pointer-events: auto;
+}
+
+#placeButton {
+    display: none;
 }
 
 #actionButtons button {

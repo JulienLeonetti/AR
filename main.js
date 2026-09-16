@@ -9,6 +9,16 @@ let camera;
 let renderer;
 let reticle;
 let controls;
+let pmremGenerator;
+let environmentRenderTarget;
+let actionButtons;
+let placeButton;
+
+let touchDown = false;
+let touchX = 0;
+let touchY = 0;
+let deltaX = 0;
+let deltaY = 0;
 
 let hitTestSource = null;
 let hitTestSourceRequested = false;
@@ -27,23 +37,6 @@ init();
 function init() {
 
     scene = new THREE.Scene();
-
-    const hdrLoader = new RGBELoader();
-
-    hdrLoader.load(
-        'textures/environment.hdr',
-        function (texture) {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            scene.environment = texture;
-        },
-        undefined,
-        function (error) {
-            console.error(
-                'Erreur lors du chargement de la texture HDR',
-                error
-            );
-        }
-    );
 
     camera = new THREE.PerspectiveCamera(
         70,
@@ -86,6 +79,36 @@ function init() {
         renderer.domElement
     );
 
+    pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    new RGBELoader()
+        .setDataType(THREE.HalfFloatType)
+        .load(
+            'textures/environment.hdr',
+            function (texture) {
+                environmentRenderTarget =
+                    pmremGenerator.fromEquirectangular(texture);
+
+                scene.environment =
+                    environmentRenderTarget.texture;
+
+                texture.dispose();
+                pmremGenerator.dispose();
+                pmremGenerator = null;
+            },
+            undefined,
+            function (error) {
+                pmremGenerator.dispose();
+                pmremGenerator = null;
+
+                console.error(
+                    'Erreur lors du chargement de la texture HDR',
+                    error
+                );
+            }
+        );
+
     controls = new OrbitControls(
         camera,
         renderer.domElement
@@ -94,12 +117,71 @@ function init() {
     controls.target.set(
         0,
         0,
-        0
+        -0.2
     );
+
+    controls.minDistance = 2;
+    controls.maxDistance = 10;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
 
     controls.update();
 
+    renderer.domElement.addEventListener(
+        'touchstart',
+        function (event) {
+            event.preventDefault();
+
+            if (event.touches.length === 0) {
+                return;
+            }
+
+            touchDown = true;
+            touchX = event.touches[0].pageX;
+            touchY = event.touches[0].pageY;
+        },
+        { passive: false }
+    );
+
+    renderer.domElement.addEventListener(
+        'touchend',
+        function (event) {
+            event.preventDefault();
+            touchDown = false;
+        },
+        { passive: false }
+    );
+
+    renderer.domElement.addEventListener(
+        'touchmove',
+        function (event) {
+            event.preventDefault();
+
+            if (
+                !touchDown ||
+                event.touches.length === 0
+            ) {
+                return;
+            }
+
+            deltaX =
+                event.touches[0].pageX - touchX;
+
+            deltaY =
+                event.touches[0].pageY - touchY;
+
+            touchX = event.touches[0].pageX;
+            touchY = event.touches[0].pageY;
+
+            rotateObject();
+        },
+        { passive: false }
+    );
+
     const domOverlay = document.getElementById('content');
+
+    actionButtons = document.getElementById('actionButtons');
+    placeButton = document.getElementById('placeButton');
 
     // Les interactions avec le menu et les boutons ne doivent pas
     // déclencher un événement de sélection dans la scène WebXR.
@@ -168,6 +250,8 @@ function init() {
             hitTestSourceRequested = false;
 
             reticle.visible = false;
+            actionButtons.style.display = 'flex';
+            placeButton.style.display = 'none';
 
             const session = renderer.xr.getSession();
 
@@ -201,6 +285,8 @@ function init() {
             hitTestSourceRequested = false;
 
             reticle.visible = false;
+            placeButton.style.display = 'none';
+            actionButtons.style.display = 'none';
 
             if (controls) {
                 controls.enabled = true;
@@ -262,11 +348,12 @@ function loadModel(model) {
             }
 
 
-            // Supprime uniquement le modèle qui était
-            // en attente de placement.
-            //
-            // Les modèles déjà placés ne sont PAS supprimés.
-            if (current_object) {
+            // Supprime uniquement le modèle qui n'a pas encore été placé.
+            // Un modèle déjà placé reste dans la scène.
+            if (
+                current_object &&
+                !placed_objects.includes(current_object)
+            ) {
 
                 scene.remove(
                     current_object
@@ -388,13 +475,6 @@ $('.ar-object').click(function (event) {
 // BOUTONS D'ACTION
 // -------------------------------------------------
 
-document.getElementById('addButton').addEventListener(
-    'click',
-    function () {
-        loadModel(selected_model);
-    }
-);
-
 document.getElementById('placeButton').addEventListener(
     'click',
     onSelect
@@ -407,7 +487,16 @@ document.getElementById('clearButton').addEventListener(
             scene.remove(object);
         });
 
+        if (
+            current_object &&
+            !placed_objects.includes(current_object)
+        ) {
+            scene.remove(current_object);
+        }
+
         placed_objects = [];
+        current_object = null;
+        loading_model = null;
     }
 );
 
@@ -438,36 +527,27 @@ function onSelect() {
     current_object.visible = true;
 
 
-    // On ajoute le modèle à la liste
-    // des modèles définitivement placés
-    placed_objects.push(
-        current_object
-    );
+    // Le premier clic enregistre l'objet comme placé.
+    // Les clics suivants déplacent ce même objet.
+    if (!placed_objects.includes(current_object)) {
+        placed_objects.push(current_object);
+    }
+}
 
 
-    // Il n'est plus le modèle en attente
-    current_object = null;
+// -------------------------------------------------
+// ROTATION TACTILE DU MODELE COURANT
+// -------------------------------------------------
 
+function rotateObject() {
 
-    // -------------------------------------------------
-    // IMPORTANT :
-    // On recharge automatiquement une nouvelle copie
-    // du MEME modèle.
-    //
-    // Ainsi, si item 1 est sélectionné :
-    //
-    // clic -> item 1
-    // clic -> item 1
-    // clic -> item 1
-    // clic -> item 1
-    // ...
-    //
-    // sans avoir besoin de retourner dans le menu.
-    // -------------------------------------------------
-
-    loadModel(
-        selected_model
-    );
+    if (
+        current_object &&
+        reticle.visible
+    ) {
+        current_object.rotation.y +=
+            deltaX / 100;
+    }
 }
 
 
@@ -482,6 +562,10 @@ function animate(
 
     // Pas de session AR
     if (!frame) {
+
+        if (controls && controls.enabled) {
+            controls.update();
+        }
 
         renderer.render(
             scene,
@@ -574,15 +658,21 @@ function animate(
             if (pose) {
 
                 reticle.visible = true;
+                placeButton.style.display = 'block';
 
                 reticle.matrix.fromArray(
                     pose.transform.matrix
                 );
+            } else {
+
+                reticle.visible = false;
+                placeButton.style.display = 'none';
             }
 
         } else {
 
             reticle.visible = false;
+            placeButton.style.display = 'none';
         }
     }
 
