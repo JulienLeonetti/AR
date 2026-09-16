@@ -29,6 +29,23 @@ function init() {
 
     scene = new THREE.Scene();
 
+    const hdrLoader = new HDRLoader();
+
+    hdrLoader.load(
+        'textures/environment.hdr',
+        function (texture) {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.environment = texture;
+        },
+        undefined,
+        function (error) {
+            console.error(
+                'Erreur lors du chargement de la texture HDR',
+                error
+            );
+        }
+    );
+
     camera = new THREE.PerspectiveCamera(
         70,
         window.innerWidth / window.innerHeight,
@@ -255,20 +272,15 @@ function loadModel(model) {
             }
 
 
-            // Nouveau modèle en attente
-            current_object =
+            // Centre le modèle dans un groupe parent.
+            // Le groupe peut être déplacé sans perdre le centrage.
+            const model_scene =
                 gltf.scene;
 
-            scene.add(
-                current_object
-            );
-
-
-            // Centre le modèle
             const box =
                 new THREE.Box3()
                     .setFromObject(
-                        current_object
+                        model_scene
                     );
 
             const center =
@@ -276,10 +288,20 @@ function loadModel(model) {
                     new THREE.Vector3()
                 );
 
-            current_object.position.sub(
+            model_scene.position.sub(
                 center
             );
 
+            current_object =
+                new THREE.Group();
+
+            current_object.add(
+                model_scene
+            );
+
+            scene.add(
+                current_object
+            );
 
             // Position de départ
             current_object.position.set(
@@ -338,6 +360,34 @@ $('.ar-object').click(function (event) {
     // Ferme le menu
     closeNav();
 });
+
+
+// -------------------------------------------------
+// BOUTONS D'ACTION
+// -------------------------------------------------
+
+document.getElementById('addButton').addEventListener(
+    'click',
+    function () {
+        loadModel(selected_model);
+    }
+);
+
+document.getElementById('placeButton').addEventListener(
+    'click',
+    onSelect
+);
+
+document.getElementById('clearButton').addEventListener(
+    'click',
+    function () {
+        placed_objects.forEach(function (object) {
+            scene.remove(object);
+        });
+
+        placed_objects = [];
+    }
+);
 
 
 // -------------------------------------------------
