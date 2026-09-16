@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<title>TP</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link type="text/css" rel="stylesheet" href="main.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+
+<div id="content">
+<div id="mySidenav" class="sidenav">
+<a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+<a class="ar-object" id="1" href="#">item_1</a>
+<a class="ar-object" id="2" href="#">item_2</a>
+<a class="ar-object" id="3" href="#">item_3</a>
+<a class="ar-object" id="4" href="#">item_4</a>
+</div>
+<div id="menuButton" onclick="openNav()">&#9776;</div>
+</div>
+
+<script type="importmap">
+{
+"imports":{
+"three":"./build/three.module.js",
+"three/addons/":"./jsm/"
+}
+}
+</script>
+
+<script type="module" src="./main.js"></script>
+
+<script>
+function openNav(){
+document.getElementById("mySidenav").style.width="250px";
+}
+
+function closeNav(){
+document.getElementById("mySidenav").style.width="0";
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,154 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    color: #fff;
+
+    font-family: Arial, sans-serif;
+}
+
+
+body {
+    position: relative;
+}
+
+
+/* ==================================================
+   CANVAS
+================================================== */
+
+canvas {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    z-index: 1;
+}
+
+
+/* ==================================================
+   CONTENEUR DOM OVERLAY AR
+================================================== */
+
+#content {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 100;
+
+    pointer-events: none;
+}
+
+
+/* ==================================================
+   MENU LATÉRAL
+================================================== */
+
+.sidenav {
+    height: 100%;
+
+    width: 0;
+
+    position: fixed;
+
+    z-index: 200;
+
+    top: 0;
+    left: 0;
+
+    background-color: rgba(17, 17, 17, 0.95);
+
+    overflow-x: hidden;
+
+    transition: 0.4s;
+
+    padding-top: 60px;
+
+    pointer-events: auto;
+}
+
+
+.sidenav a {
+    padding: 12px 8px 12px 32px;
+
+    text-decoration: none;
+
+    font-size: 20px;
+
+    color: #fff;
+
+    display: block;
+
+    transition: 0.3s;
+
+    pointer-events: auto;
+}
+
+
+.sidenav a:hover {
+    color: #aaa;
+}
+
+
+/* ==================================================
+   BOUTON X
+================================================== */
+
+.sidenav .closebtn {
+    position: absolute;
+
+    top: 10px;
+    right: 20px;
+
+    font-size: 36px;
+
+    margin-left: 50px;
+
+    pointer-events: auto;
+}
+
+
+/* ==================================================
+   BOUTON MENU
+================================================== */
+
+#menuButton {
+    position: fixed;
+
+    top: 20px;
+    left: 20px;
+
+    z-index: 300;
+
+    font-size: 30px;
+
+    cursor: pointer;
+
+    color: white;
+
+    background-color: rgba(0, 0, 0, 0.65);
+
+    padding: 5px 12px;
+
+    border-radius: 8px;
+
+    pointer-events: auto;
+
+    touch-action: manipulation;
+}
