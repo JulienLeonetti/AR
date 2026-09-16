@@ -21,6 +21,7 @@ let touchX = 0;
 let touchY = 0;
 let deltaX = 0;
 let deltaY = 0;
+let lastTouchAngle = null;
 
 let hitTestSource = null;
 let hitTestSourceRequested = false;
@@ -144,6 +145,10 @@ function init() {
             touchDown = true;
             touchX = event.touches[0].pageX;
             touchY = event.touches[0].pageY;
+
+            if (event.touches.length >= 2) {
+                lastTouchAngle = getTouchAngle(event.touches);
+            }
         },
         { passive: false }
     );
@@ -152,7 +157,30 @@ function init() {
         'touchend',
         function (event) {
             event.preventDefault();
+
+            if (event.touches.length === 0) {
+                touchDown = false;
+                lastTouchAngle = null;
+                return;
+            }
+
+            touchX = event.touches[0].pageX;
+            touchY = event.touches[0].pageY;
+
+            lastTouchAngle =
+                event.touches.length >= 2
+                    ? getTouchAngle(event.touches)
+                    : null;
+        },
+        { passive: false }
+    );
+
+    renderer.domElement.addEventListener(
+        'touchcancel',
+        function (event) {
+            event.preventDefault();
             touchDown = false;
+            lastTouchAngle = null;
         },
         { passive: false }
     );
@@ -168,6 +196,25 @@ function init() {
             ) {
                 return;
             }
+
+            if (event.touches.length >= 2) {
+
+                const touchAngle =
+                    getTouchAngle(event.touches);
+
+                if (lastTouchAngle !== null) {
+                    rotateObjectOnZ(
+                        normalizeAngle(
+                            touchAngle - lastTouchAngle
+                        )
+                    );
+                }
+
+                lastTouchAngle = touchAngle;
+                return;
+            }
+
+            lastTouchAngle = null;
 
             deltaX =
                 event.touches[0].pageX - touchX;
@@ -664,13 +711,51 @@ function rotateObject() {
         current_object &&
         reticle.visible
     ) {
-        current_object.rotation.y +=
-            deltaX / 100;
+        current_object.rotation.y += deltaX / 100;
+        current_object.rotation.x += deltaY / 100;
 
         if (selectionHelper) {
             selectionHelper.update();
         }
     }
+}
+
+
+function rotateObjectOnZ(angle) {
+
+    if (
+        current_object &&
+        reticle.visible
+    ) {
+        current_object.rotation.z += angle;
+
+        if (selectionHelper) {
+            selectionHelper.update();
+        }
+    }
+}
+
+
+function getTouchAngle(touches) {
+
+    return Math.atan2(
+        touches[1].pageY - touches[0].pageY,
+        touches[1].pageX - touches[0].pageX
+    );
+}
+
+
+function normalizeAngle(angle) {
+
+    if (angle > Math.PI) {
+        return angle - Math.PI * 2;
+    }
+
+    if (angle < -Math.PI) {
+        return angle + Math.PI * 2;
+    }
+
+    return angle;
 }
 
 
