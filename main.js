@@ -15,6 +15,7 @@ let pmremGenerator;
 let environmentRenderTarget;
 let actionButtons;
 let placeButton;
+let rotationSurface;
 
 let touchDown = false;
 let touchX = 0;
@@ -133,9 +134,15 @@ function init() {
 
     controls.update();
 
-    renderer.domElement.addEventListener(
+    document.addEventListener(
         'touchstart',
         function (event) {
+
+            if (isInterfaceElement(event.target)) {
+                touchDown = false;
+                return;
+            }
+
             event.preventDefault();
 
             if (event.touches.length === 0) {
@@ -150,12 +157,17 @@ function init() {
                 lastTouchAngle = getTouchAngle(event.touches);
             }
         },
-        { passive: false }
+        { passive: false, capture: true }
     );
 
-    renderer.domElement.addEventListener(
+    document.addEventListener(
         'touchend',
         function (event) {
+
+            if (!touchDown) {
+                return;
+            }
+
             event.preventDefault();
 
             if (event.touches.length === 0) {
@@ -172,23 +184,27 @@ function init() {
                     ? getTouchAngle(event.touches)
                     : null;
         },
-        { passive: false }
+        { passive: false, capture: true }
     );
 
-    renderer.domElement.addEventListener(
+    document.addEventListener(
         'touchcancel',
         function (event) {
+
+            if (!touchDown) {
+                return;
+            }
+
             event.preventDefault();
             touchDown = false;
             lastTouchAngle = null;
         },
-        { passive: false }
+        { passive: false, capture: true }
     );
 
-    renderer.domElement.addEventListener(
+    document.addEventListener(
         'touchmove',
         function (event) {
-            event.preventDefault();
 
             if (
                 !touchDown ||
@@ -196,6 +212,8 @@ function init() {
             ) {
                 return;
             }
+
+            event.preventDefault();
 
             if (event.touches.length >= 2) {
 
@@ -227,20 +245,24 @@ function init() {
 
             rotateObject();
         },
-        { passive: false }
+        { passive: false, capture: true }
     );
 
     const domOverlay = document.getElementById('content');
 
     actionButtons = document.getElementById('actionButtons');
     placeButton = document.getElementById('placeButton');
+    rotationSurface = document.getElementById('rotationSurface');
 
     // Les interactions avec le menu et les boutons ne doivent pas
     // déclencher un événement de sélection dans la scène WebXR.
     domOverlay.addEventListener(
         'beforexrselect',
         function (event) {
-            event.preventDefault();
+
+            if (isInterfaceElement(event.target)) {
+                event.preventDefault();
+            }
         }
     );
 
@@ -685,10 +707,15 @@ function showSelectionHelper(object) {
     );
 
     scene.add(selectionHelper);
+    rotationSurface.style.display = 'block';
 }
 
 
 function clearSelectionHelper() {
+
+    if (rotationSurface) {
+        rotationSurface.style.display = 'none';
+    }
 
     if (!selectionHelper) {
         return;
@@ -709,7 +736,7 @@ function rotateObject() {
 
     if (
         current_object &&
-        reticle.visible
+        selectionHelper
     ) {
         current_object.rotation.y += deltaX / 100;
         current_object.rotation.x += deltaY / 100;
@@ -725,7 +752,7 @@ function rotateObjectOnZ(angle) {
 
     if (
         current_object &&
-        reticle.visible
+        selectionHelper
     ) {
         current_object.rotation.z += angle;
 
@@ -733,6 +760,17 @@ function rotateObjectOnZ(angle) {
             selectionHelper.update();
         }
     }
+}
+
+
+function isInterfaceElement(target) {
+
+    return (
+        target instanceof Element &&
+        target.closest(
+            '#actionButtons, #menuButton, #mySidenav, #ARButton'
+        ) !== null
+    );
 }
 
 

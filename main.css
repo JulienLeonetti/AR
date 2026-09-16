@@ -161,6 +161,21 @@ canvas {
 
 
 /* ==================================================
+   ZONE TACTILE DE ROTATION
+================================================== */
+
+#rotationSurface {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    display: none;
+    background: transparent;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+
+/* ==================================================
    BOUTONS D'ACTION
 ================================================== */
 
