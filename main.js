@@ -2,13 +2,12 @@ import * as THREE from 'three';
 import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { GLTFLoader } from 'three/addons/webxr/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/webxr/OrbitControls.js';
-import { HDRLoader } from 'three/addons/webxr/HDRLoader.js';
+import { RGBELoader } from 'three/addons/webxr/RGBELoader.js';
 
 let scene;
 let camera;
 let renderer;
 let reticle;
-let controller;
 let controls;
 
 let hitTestSource = null;
@@ -29,7 +28,7 @@ function init() {
 
     scene = new THREE.Scene();
 
-    const hdrLoader = new HDRLoader();
+    const hdrLoader = new RGBELoader();
 
     hdrLoader.load(
         'textures/environment.hdr',
@@ -100,29 +99,26 @@ function init() {
 
     controls.update();
 
-    controller = renderer.xr.getController(0);
+    const domOverlay = document.getElementById('content');
 
-    controller.addEventListener(
-        'select',
-        onSelect
+    // Les interactions avec le menu et les boutons ne doivent pas
+    // déclencher un événement de sélection dans la scène WebXR.
+    domOverlay.addEventListener(
+        'beforexrselect',
+        function (event) {
+            event.preventDefault();
+        }
     );
-
-    scene.add(controller);
 
     const options = {
 
         requiredFeatures: [
-            'hit-test'
-        ],
-
-        optionalFeatures: [
+            'hit-test',
             'dom-overlay'
         ],
 
         domOverlay: {
-            root: document.getElementById(
-                'content'
-            )
+            root: domOverlay
         }
     };
 
@@ -172,6 +168,14 @@ function init() {
             hitTestSourceRequested = false;
 
             reticle.visible = false;
+
+            const session = renderer.xr.getSession();
+
+            if (!session.domOverlayState) {
+                console.error(
+                    'Le DOM Overlay n’est pas disponible pour cette session AR.'
+                );
+            }
 
             // Le modèle en attente de placement est caché
             if (current_object) {
@@ -288,6 +292,17 @@ function loadModel(model) {
                     new THREE.Vector3()
                 );
 
+            const size =
+                box.getSize(
+                    new THREE.Vector3()
+                );
+
+            const max_size = Math.max(
+                size.x,
+                size.y,
+                size.z
+            );
+
             model_scene.position.sub(
                 center
             );
@@ -298,6 +313,13 @@ function loadModel(model) {
             current_object.add(
                 model_scene
             );
+
+            // Tous les modèles ont une dimension maximale de 50 cm.
+            if (max_size > 0) {
+                current_object.scale.setScalar(
+                    0.5 / max_size
+                );
+            }
 
             scene.add(
                 current_object
